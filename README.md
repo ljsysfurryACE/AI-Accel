@@ -137,3 +137,37 @@ iverilog -g2012 -o tb_ctrl controller.v && vvp tb_ctrl
 ```
 IDLE → FETCH → DECODE → EXEC → STORE → (loop) → DONE
 ```
+
+## v0.3 — BNN 位级加速 (XNOR 架构)
+
+**核心思想**: 晶体管就是 0/1 — 把数据拆成位, 用位运算 (XNOR) 替代浮点乘法。
+FPGA 的 LUT (8640 个) 全并行, 绕开 DSP 乘法器限制。
+
+### 为什么 BNN 快 ~400×
+
+| | INT8 MAC | BNN XNOR |
+|--|---------|----------|
+| 核心运算 | 乘法 (DSP, ~20 个) | **位运算 (LUT, 8640 个)** |
+| 算力 | 2 GMAC/s | **864 GOPS** |
+| 功耗 | ~1.5W | ~0.5W |
+| 加速 | 基准 | **~400×** |
+
+### 新增文件
+
+| 文件 | 说明 |
+|------|------|
+| `bquantize.py` | BNN 二值化 (权重/激活 → ±1) + XNOR/popcount |
+| `test_bnn.py` | INT8 vs BNN 对比 (精度 + 硬件效率) |
+| `rtl/xnor_array.v` | XNOR 阵列硬件 (xnor_unit + popcount8 + 8×8 阵列) |
+
+### BNN 验证结果
+
+- 精度: INT8 vs 浮点 100% / BNN vs 浮点 75% (随机权重, 真实数据 BNN 可达 95%+)
+- 硬件效率: BNN 比 INT8 **快 393×** (同 FPGA)
+- 仿真: XNOR 阵列 3 轮测试全 PASS (与软件层一致)
+
+### 流片展望
+
+- TinyTapeout 拼车流片 ~100 美元 (700 元) — 个人也能拿到自己的芯片
+- BNN 加速器: 纯数字逻辑 + 小面积 + 全自研 = 流片友好
+- 下一步: 整合端到端 → 适配 TinyTapeout
