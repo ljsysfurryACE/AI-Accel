@@ -311,3 +311,34 @@ AI-Accel 完整 RTL:
 
 - `32'b10` = bit0=0 (START 没触发) → 应 `32'b11`
 - 32 位 reg 用 `[63:0]` 索引 → 高位 X → 应 `{32'b0, acc_result}` 拼接
+
+## v0.8a — SoC 骨架 (RISC-V CPU + BRAM)
+
+**里程碑**: 自研 SoC 的 CPU 核心点亮! PicoRV32 软核在 BRAM 上跑固件。
+
+### rtl/soc_a.v
+
+- **PicoRV32** (RISC-V 软核): simple memory 接口, ENABLE_MUL/DIV/IRQ
+- **BRAM 16KB**: 0x0000-0x0FFF (程序+数据)
+- **外设**: 0x1000 LED 状态寄存器 (验证 CPU 写外设)
+- **固件**: 手写 RISC-V 指令 (lui/addi/sw/ebreak)
+
+### 内存映射
+
+```
+0x0000-0x0FFF: BRAM (程序+数据)
+0x1000-0x100F: LED 状态寄存器
+```
+
+### 仿真验证
+
+```
+固件: lui x5,0x12345 → addi → sw 到 BRAM → sw 到 LED → ebreak
+结果: LED 状态寄存器 = 0x12345678 ✅ CPU trap ✅
+```
+
+### 踩坑记录 (RISC-V 手写编码)
+
+- `lui x6, 0x1000` 生成 0x1000000 不是 0x1000 (imm 左移 12 位, 应 `lui x6, 1`)
+- sw 是 S-type: `sw x5, 0x100(x0)` = 0x10502023 (rs2 低 5 位, rs1 高 5 位)
+- lui 高 16 位必须写全: 0x123452b7 不是 0x000052b7
