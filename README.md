@@ -277,3 +277,37 @@ AI-Accel 完整 RTL:
 ├─ power.v           时钟门控
 └─ timing.sdc        时序约束 (250MHz)
 ```
+
+## v0.7 — DMA 引擎 (SoC 数据搬运)
+
+**问题**: CPU 逐拍搬运数据 → 总线带宽瓶颈 → CPU 被拖死。
+**解决**: DMA 直接内存访问, BRAM ↔ BNN 加速器批量搬运, CPU 只发命令然后休眠。
+
+### DMA 工作流
+
+```
+1. CPU 写控制寄存器 (src/dst/len) → START
+2. CPU 休眠 (WFI) 💤
+3. DMA: BRAM → burst → BNN 加速器 → 算完 → burst → BRAM
+4. DMA 完成 → 中断 → 唤醒 CPU
+5. CPU 读结果
+```
+
+**总线只碰 2 次** (启动命令 + 完成中断) → 功耗才能真降到 150mW 以下
+
+### rtl/dma.v
+
+- CPU 寄存器接口: addr0=控制, addr1=src, addr2=dst, addr3=len, addr4=状态
+- Burst 传输: 8×64bit 批量搬运
+- 完成中断: irq 唤醒 CPU
+- 状态机: IDLE→READ→FEED→WAIT→WRITE→DONE
+
+### 仿真验证
+
+- 32 个数据: mem[0..31] → 加速器(+1) → mem[32..63] 全部正确 ✅
+- 中断唤醒 CPU ✅
+
+### 踩坑记录
+
+- `32'b10` = bit0=0 (START 没触发) → 应 `32'b11`
+- 32 位 reg 用 `[63:0]` 索引 → 高位 X → 应 `{32'b0, acc_result}` 拼接
