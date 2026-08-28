@@ -97,3 +97,43 @@ RTL 完成后实现 `FPGABackend` 即可，上层不变。
 ## 许可证
 
 GPL-3.0 © Cloud LTE Studio
+
+## v0.2 — RTL 层 (Verilog 硬件核心)
+
+新增 `rtl/` 目录:
+
+| 文件 | 说明 |
+|------|------|
+| `rtl/mac8x8.v` | MAC 单元 + 8×8=64 阵列 (int8×int8→int32) |
+| `rtl/controller.v` | 状态机控制器 (LOAD_W/CONV/RELU/POOL/FC/STORE) |
+| `rtl/tb_mac8x8.v` | MAC 阵列仿真 (与软件层一致 PASS) |
+| `rtl/tb_controller.v` | 控制器仿真 (指令流执行 PASS) |
+
+### 仿真验证
+
+```bash
+# MAC 阵列
+iverilog -g2012 -o tb_mac mac8x8.v tb_mac8x8.v && vvp tb_mac
+# PASS: 8 路 MAC 全部与软件层一致
+
+# 控制器
+iverilog -g2012 -o tb_ctrl controller.v && vvp tb_ctrl
+# ✅ 控制器状态机执行完整指令流
+```
+
+### 硬件指令集
+
+| opcode | 指令 | cycle |
+|--------|------|-------|
+| 0x01 | LOAD_W | 8 |
+| 0x02 | CONV | 64 |
+| 0x03 | RELU | 1 |
+| 0x04 | POOL | 4 |
+| 0x05 | FC | 64 |
+| 0x06 | STORE | 1 |
+
+### 状态机
+
+```
+IDLE → FETCH → DECODE → EXEC → STORE → (loop) → DONE
+```
