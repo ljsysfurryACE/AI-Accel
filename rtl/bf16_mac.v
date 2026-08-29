@@ -63,7 +63,7 @@ endmodule
 module adder_tree #(
     parameter M = 16
 ) (
-    input  wire [31:0] in [0:M-1],
+    input  wire [M*32-1:0] in,
     output wire [31:0] out
 );
     genvar t, k;
@@ -72,7 +72,7 @@ module adder_tree #(
 
     generate
         for (t = 0; t < M; t = t + 1) begin : lv0
-            assign lv[0][t] = in[t];
+            assign lv[0][t] = in[t*32 +: 32];
         end
         for (t = 0; t < LV; t = t + 1) begin : tree_lv
             localparam C = M >> (t+1);
@@ -162,8 +162,12 @@ module bf16_mac_array #(
             end
             // 加法树 (M 路 → 1 路, log2(M) 级)
             wire [31:0] sum;
+            wire [M*32-1:0] ext_packed;
+            for (j = 0; j < M; j = j + 1) begin : pack_ext
+                assign ext_packed[j*32 +: 32] = ext_out[j];
+            end
             adder_tree #(.M(M)) tree (
-                .in(ext_out), .out(sum)
+                .in(ext_packed), .out(sum)
             );
             // FP32 累加
             reg [31:0] acc_reg;
