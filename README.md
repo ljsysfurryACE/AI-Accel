@@ -342,3 +342,47 @@ AI-Accel 完整 RTL:
 - `lui x6, 0x1000` 生成 0x1000000 不是 0x1000 (imm 左移 12 位, 应 `lui x6, 1`)
 - sw 是 S-type: `sw x5, 0x100(x0)` = 0x10502023 (rs2 低 5 位, rs1 高 5 位)
 - lui 高 16 位必须写全: 0x123452b7 不是 0x000052b7
+
+## v0.8b — 端到端真实推理 (SoC 完整链路) 🎉
+
+**里程碑**: 一颗 RISC-V CPU + 自研 BNN 加速器的完整 SoC, 成功识别真实 MNIST 数字!
+
+### 完整链路
+
+```
+RISC-V CPU 固件 (rv_asm.py 汇编生成)
+  → 复位 BNN → 加载 130 字权重 → 加载 10 偏置
+  → BNN START → 配置 DMA (src=输入, len=13)
+  → DMA 流式喂 13 字 → 轮询完成
+  → argmax → LED=7 → ebreak
+```
+
+### 新增文件
+
+- `rtl/bnn_slave.v`: BNN 分类器从设备 (10 通道 XNOR+popcount+累加, memory-mapped)
+- `rtl/soc_b.v`: 完整 SoC (PicoRV32 + BRAM + DMA + BNN + 外设)
+- `rtl/mnist_weights.hex / input.hex / bias.hex`: 真实 MNIST 数据 (75.69% 准确率)
+- `tools/rv_asm.py`: 极简 RISC-V RV32I 汇编器 (lui/addi/sw/lw/jal/branch/li/伪指令)
+- `tools/gen_mnist_data.py`: 感知机训练 + 二值化 + 偏置微调 → 硬件格式
+- `tools/gen_firmware.py`: C 风格固件 → 机器码
+
+### DMA 升级 (v0.8b)
+
+- 流式喂数据模式: 连续喂 len 个字再等 acc_done (适配 BNN 累加器)
+- 地址步进修复: 64-bit 字 = 8 字节 (count<<3)
+
+### 验证结果
+
+```
+✅ CPU ebreak (程序结束)
+✅ LED (分类结果) = 7
+✅ 权重加载完全正确 (wt[0]/wt[91]/wt[129] 全匹配)
+✅ 端到端推理成功: SoC 识别出数字 7!
+```
+
+### 踩坑 (RISC-V 汇编器)
+
+- JAL imm 是分散位段, 不是 diff<<12
+- 负跳转: Python 算术右移 → 需 & 0xFFFFFFFF 转补码
+- BNN 必须 START 才接收 DMA 数据
+- DMA 64-bit 地址步进 8 字节
