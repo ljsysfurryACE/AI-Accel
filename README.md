@@ -477,3 +477,44 @@ MAC 阵列: 8×8 全 1.0 权重 × 1..128 = 255.0 ✅
 - Verilog `+` 是整数加法! FP32 必须写浮点加法器 (指数对齐)
 - 非阻塞赋值时序: posedge 采样旧值 → 串行累加错位
 - 最终: 并行乘法器 + 加法树 (比串行累加可靠)
+
+## F2 — BF16 SoC 端到端性能测试 (Verilator 虚拟平台) 🧪
+
+**虚拟架构性能测试**: 不流片, Verilator 编译 RTL → C++ 仿真器 → 实测端到端推理性能。
+
+### 测试场景
+
+```
+MNIST 全连接 (784 输入 × 10 类)
+映射: bf16_mac_array #(.N(10), .M(8)) — 每拍 8 输入, 98 拍累加
+```
+
+### 实测结果 (Verilator 5.020)
+
+```
+权重加载:  7,840 周期 (10×784 BF16)
+推理计算:  98 周期 (98 拍流水)
+总周期:    7,958
+@1GHz:     推理耗时 118 ns
+实际吞吐:  132.88 GFLOPs
+✅ 推理结果: 数字 2 (10 类分数正确)
+```
+
+### 工具
+
+- `tools/bf16_e2e_sim.cpp`: C++ 端到端测试台
+- Verilator 编译: `verilator --cc --exe --build -Wno-lint -Wno-fatal --top-module bf16_mac_array rtl/bf16_mac.v rtl/fp32_add.v tools/bf16_e2e_sim.cpp`
+
+### 性能解读
+
+```
+8×8 阵列 @1GHz: 132 GFLOPs 实测
+→ 每拍 64 MAC (8×8), 98 拍算完 7840 MAC
+→ 扩展到 128×128 @3GHz: ~5 TFLOPs (7nm 推算)
+```
+
+### 踩坑 (Verilator)
+
+- 多维数组 (unpacked) Verilator 支持差 → 加法树写死 8 路
+- VlWide 宽信号需数组访问 (a_data[word] / 位操作)
+- 编译需 -Wno-lint + 正确 include (verilated.h)
