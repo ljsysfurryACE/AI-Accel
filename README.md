@@ -521,3 +521,54 @@ MNIST 全连接 (784 输入 × 10 类)
 - 多维数组 (unpacked) Verilator 支持差 → 加法树写死 8 路
 - VlWide 宽信号需数组访问 (a_data[word] / 位操作)
 - 编译需 -Wno-lint + 正确 include (verilated.h)
+
+## F3 — 纸鸢微内核 (PaperKite µKernel) 🪁
+
+**AI-Accel SoC 的最小运行环境** — 轮询式协作内核, 无网络/无动态内存/无抢占/无中断依赖 = 几乎没有安全风险.
+
+### 安全设计 (攻击面为零)
+
+```
+❌ 无网络栈        → 无远程攻击面
+❌ 无动态内存      → 无堆溢出利用链 (全静态分配)
+❌ 无栈切换/抢占   → 无竞态条件 (轮询式 step 调度)
+❌ 无中断依赖      → 无中断向量表漏洞
+❌ 无用户态/特权级 → 无提权面
+```
+
+### 实测 (iverilog + PicoRV32 真实 SoC 仿真)
+
+```
+PaperKite uKernel v0.2
+tasks: led / counter / infer
+  [task2] n=0x00000000      ← 每 50 tick
+  [task2] n=0x00000001
+  [task3] BF16 submit, acc=0xDEADBEEF  ← 每 100 tick
+  20万周期: trap=0, PASS, LED 闪烁正常
+```
+
+### 文件
+
+- `os/kernel.c` — 内核 (任务表/轮询调度/最小libc/BF16驱动/DMA驱动)
+- `os/start.s` — 启动 (栈+清BSS含.sbss)
+- `os/link.ld` — 链接脚本 (RAM 0x0000-0x1FFF)
+- `rtl/soc_f.v` — F 系列 SoC (PicoRV32+BRAM+UART+定时器+BF16接口+DMA+LED)
+
+### 编译
+
+```bash
+riscv64-unknown-elf-gcc -march=rv32im_zicsr_zifencei -mabi=ilp32 -Os \
+  -ffreestanding -nostdlib -c start.s -o start.o
+riscv64-unknown-elf-gcc -march=rv32im_zicsr_zifencei -mabi=ilp32 -Os \
+  -ffreestanding -nostdlib -c kernel.c -o kernel.o
+riscv64-unknown-elf-ld -m elf32lriscv -T link.ld -nostdlib start.o kernel.o -o kernel.elf
+# objcopy -O binary → 4字节小端 → kernel.hex ($readmemh)
+```
+
+### 踩坑 (RISC-V 裸机)
+
+- PicoRV32 COMPRESSED_ISA=0 → 必须编译 rv32im (无压缩指令)
+- PicoRV32 CSR 支持有限 → 启动代码不要用 csrci (复位默认关中断)
+- GCC 的 .sbss 小数据段不在 .bss* 通配符内 → link.ld 必须加 *(.sbss*)
+- start.s 内定义栈会覆盖 link.ld 符号 → 栈统一由 link.ld 分配
+- 链接器默认 elf64 emulation → ld 必须 -m elf32lriscv
