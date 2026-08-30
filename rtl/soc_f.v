@@ -8,6 +8,7 @@
 //   0x2100-0x2110  BF16 任务接口 (ctl/addr/num/result)
 //   0x2200-0x220C  DMA (ctl/src/dst/len)
 //   0x2300         LED
+//   0x2400-0x241F  16×16 LED 矩阵 (256bit, 每字节 8 位)
 // =========================================================================
 module soc_f #(
     parameter N = 8,      // BF16 输出通道
@@ -48,14 +49,18 @@ module soc_f #(
     assign cpu_irq = 1'b0;  // 协作式内核, 不用中断
 
     // ============ 地址译码 ============
-    wire ram_sel  = (mem_addr < 32'h2000);
+    // 0x1000-0x101F 是外设区 (UART/KEY), 必须排除出 BRAM!
+    wire periph_low = (mem_addr >= 32'h1000 && mem_addr < 32'h1020);
+    wire ram_sel  = (mem_addr < 32'h2000) && !periph_low;
     wire uart_sel = (mem_addr == 32'h1000);
+    wire key_sel  = (mem_addr == 32'h1010);
     wire tim_sel  = (mem_addr == 32'h2000);
     wire bf_ctl   = (mem_addr >= 32'h2100 && mem_addr < 32'h2120);
     wire dma_sel  = (mem_addr >= 32'h2200 && mem_addr < 32'h2210);
     wire led_sel  = (mem_addr == 32'h2300);
+    wire disp_sel = (mem_addr >= 32'h2400 && mem_addr < 32'h2420);
 
-    wire dev_sel  = uart_sel | tim_sel | bf_ctl | dma_sel | led_sel;
+    wire dev_sel  = uart_sel | key_sel | tim_sel | bf_ctl | dma_sel | led_sel | disp_sel;
     assign mem_ready = (mem_instr) ? 1'b1 : (ram_sel | dev_sel);
 
     // ============ BRAM 8KB ============
@@ -75,6 +80,13 @@ module soc_f #(
     always @(posedge clk) begin
         if (mem_valid && uart_sel && mem_wstrb[0])
             uart_char <= mem_wdata[7:0];
+    end
+
+    // ============ 键盘输入 ============
+    reg [7:0] key_r;
+    always @(posedge clk) begin
+        if (!resetn) key_r <= 0;
+        // testbench 注入: dut.key_r = 按键 ASCII
     end
 
     // ============ 定时器 (节拍) ============
@@ -130,6 +142,19 @@ module soc_f #(
     end
     assign led = led_r;
 
+    // ============ 16×16 LED 矩阵 ============
+    // 支持 4 字节使能: 编译器会把字节操作优化成 32 位 lw/sw!
+    reg [255:0] display_r;
+    always @(posedge clk) begin
+        if (!resetn) display_r <= 0;
+        else if (mem_valid && disp_sel) begin
+            if (mem_wstrb[0]) display_r[mem_addr[4:0]*8 +: 8] <= mem_wdata[7:0];
+            if (mem_wstrb[1]) display_r[(mem_addr[4:0]+1)*8 +: 8] <= mem_wdata[15:8];
+            if (mem_wstrb[2]) display_r[(mem_addr[4:0]+2)*8 +: 8] <= mem_wdata[23:16];
+            if (mem_wstrb[3]) display_r[(mem_addr[4:0]+3)*8 +: 8] <= mem_wdata[31:24];
+        end
+    end
+
     // ============ 读回 ============
     reg [31:0] rd_mux;
     always @(*) begin
@@ -138,6 +163,8 @@ module soc_f #(
         else if (bf_ctl)  rd_mux = (mem_addr[7:0] == 8'h10) ? bf_result : 0;
         else if (dma_sel) rd_mux = dma_ctl;
         else if (led_sel) rd_mux = led_r;
+        else if (key_sel) rd_mux = {24'h0, key_r};
+        else if (disp_sel) rd_mux = display_r[mem_addr[4:0]*8 +: 8];
         else              rd_mux = 32'h0;
     end
     assign mem_rdata = rd_mux;

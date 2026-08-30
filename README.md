@@ -572,3 +572,33 @@ riscv64-unknown-elf-ld -m elf32lriscv -T link.ld -nostdlib start.o kernel.o -o k
 - GCC 的 .sbss 小数据段不在 .bss* 通配符内 → link.ld 必须加 *(.sbss*)
 - start.s 内定义栈会覆盖 link.ld 符号 → 栈统一由 link.ld 分配
 - 链接器默认 elf64 emulation → ld 必须 -m elf32lriscv
+
+## F3.1 — 贪吃蛇 (Snake on PaperKite) 🐍
+
+**纸鸢微内核 + soc_f SoC 上跑贪吃蛇** — "自研 CPU + 自研 OS + 自研游戏"全链路!
+
+### 实测 (iverilog 仿真)
+
+```
+frame: 食物(4,12)● + 蛇向右移动
+       (7,7)(7,8) → (7,8) → (7,12) → (7,13) → 撞墙
+GAME OVER 正常触发, 蛇重置
+```
+
+### 游戏功能
+
+- 16×16 LED 矩阵显示 (256 bit, 0x2400-0x241F)
+- WASD 方向键 (0x1010 键盘输入)
+- 蛇移动/增长/吃食物 (硬件定时器伪随机)
+- 撞墙/撞自己 → GAME OVER → 重置
+
+### 新增硬件 (soc_f.v)
+
+- 0x1010 键盘输入寄存器
+- 0x2400-0x241F 16×16 LED 矩阵 (4 字节使能写)
+
+### 踩坑 (硬件外设设计)
+
+- 外设区 (0x1000-0x101F) 必须排除出 BRAM 译码, 否则读回 X 触发误分支
+- GCC 把字节操作优化成 32 位 lw/sw → 外设必须支持完整 wstrb 字节使能
+- wstrb[1-3] 对应字节偏移 +1/+2/+3, 不能都写 base 字节

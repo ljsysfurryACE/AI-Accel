@@ -29,6 +29,8 @@
 #define REG_DMA_DST     (*(volatile uint32_t*)0x2208)
 #define REG_DMA_LEN     (*(volatile uint32_t*)0x220C)
 #define REG_LED         (*(volatile uint32_t*)0x2300)
+#define REG_KEY         (*(volatile uint32_t*)0x1010)   /* 键盘输入 */
+#define REG_DISPLAY     ((volatile uint8_t*)0x2400)     /* 16×16 LED 矩阵 */
 
 /* ---------- 最小 libc ---------- */
 static void putc(char c) { REG_UART = c; }
@@ -87,6 +89,76 @@ static void infer_step(void) {
     putc('\n');
 }
 
+/* ---------- 贪吃蛇任务 (每 60 节拍) ---------- */
+#define GW 16
+#define GH 16
+static int8_t sx[256], sy[256];   /* 蛇身坐标 (最长 256) */
+static uint16_t slen;
+static uint8_t  sdir;             /* 0上 1下 2左 3右 */
+static uint8_t  fx, fy;           /* 食物 */
+static uint8_t  sdead;
+
+static void snake_init(void) {
+    slen = 3; sdir = 3; sdead = 0;
+    sx[0]=7; sy[0]=7; sx[1]=6; sy[1]=7; sx[2]=5; sy[2]=7;
+    fx=12; fy=4;
+}
+
+static void snake_render(void) {
+    uint16_t i;
+    for (i = 0; i < 32; i++) REG_DISPLAY[i] = 0;
+    for (i = 0; i < slen; i++) {
+        uint16_t bit = sy[i]*GW + sx[i];
+        REG_DISPLAY[bit>>3] |= (uint8_t)(1 << (bit & 7));
+    }
+    REG_DISPLAY[(fy*GW+fx)>>3] |= (uint8_t)(1 << ((fy*GW+fx)&7));
+}
+
+static void snake_step(void) {
+    uint32_t k = REG_KEY;
+    uint16_t i;
+    int nx, ny;
+
+    /* 方向输入 (不能反向) */
+    if      (k == 'w' && sdir != 1) sdir = 0;
+    else if (k == 's' && sdir != 0) sdir = 1;
+    else if (k == 'a' && sdir != 3) sdir = 2;
+    else if (k == 'd' && sdir != 2) sdir = 3;
+
+    if (sdead) { snake_init(); return; }
+
+    /* 移动 */
+    nx = sx[0]; ny = sy[0];
+    if (sdir == 0) ny--;
+    else if (sdir == 1) ny++;
+    else if (sdir == 2) nx--;
+    else nx++;
+
+    /* 撞墙 */
+    if (nx < 0 || nx >= GW || ny < 0 || ny >= GH) {
+        sdead = 1; puts("GAME OVER\n");
+        return;
+    }
+    /* 撞自己 */
+    for (i = 0; i < slen; i++)
+        if (sx[i] == nx && sy[i] == ny) { sdead = 1; puts("GAME OVER\n"); return; }
+
+    /* 身体前移 */
+    for (i = slen; i > 0; i--) { sx[i] = sx[i-1]; sy[i] = sy[i-1]; }
+    sx[0] = nx; sy[0] = ny;
+
+    /* 吃食物 */
+    if (nx == fx && ny == fy) {
+        slen++;
+        /* 伪随机新食物 (硬件定时器低位) */
+        uint32_t r = REG_TIMER * 2654435761u;
+        fx = (r >> 24) % GW;
+        fy = (r >> 16) % GH;
+    }
+
+    snake_render();
+}
+
 /* ---------- 内核主循环 (轮询调度器) ---------- */
 void kernel_main(void) {
     uint32_t tick = 0;
@@ -98,6 +170,8 @@ void kernel_main(void) {
     task_register(led_step,     20);
     task_register(counter_step, 50);
     task_register(infer_step,  100);
+    snake_init();
+    task_register(snake_step,   60);
 
     /* 轮询调度: 每节拍扫描所有任务, 到点则执行 step (返回即让出) */
     while (1) {
