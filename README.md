@@ -4,6 +4,13 @@
 
 先写软件层，与硬件解耦、可独立验证。将来 RTL（MAC 阵列）实现后，只需替换 Backend 为 FPGA 驱动，上层代码不变。
 
+## ⚠️ 设计口径声明（必读）
+
+**本仓库所有 7nm/28nm 数字 = 理论外推，非 PDK 实测。**
+全开源 + 不流片路线 → 综合用 FreePDK45 (45nm 开源标准单元库, Yosys+abc 映射真实单元, 非 FPGA LUT)，
+物理验证用 OpenROAD 完整流程 (已产出真实 GDS)。
+详见 [docs/design-scope-statement.md](docs/design-scope-statement.md) — 含已知欠账诚实清单。
+
 ## 🏗️ 架构
 
 ```

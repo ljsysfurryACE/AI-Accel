@@ -1,3 +1,8 @@
+> ⚠️ **口径警告**: 本文档所有数字为**理论外推 (scaling model)**,
+> 基于公开工艺数据推算, **非真实 PDK 综合/实测**。
+> 全开源+不流片路线 (FreePDK45 45nm 为实际综合库)。
+> 详见 [design-scope-statement.md](design-scope-statement.md)。
+
 # 28nm 工艺参数基准 (流片级)
 
 > AI-Accel C 版 · 工艺参数基准表
