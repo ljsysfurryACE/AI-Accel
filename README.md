@@ -4,6 +4,13 @@
 
 先写软件层，与硬件解耦、可独立验证。将来 RTL（MAC 阵列）实现后，只需替换 Backend 为 FPGA 驱动，上层代码不变。
 
+## 🧭 快速导航
+
+```
+主线:  F1 BF16阵列 → F2 性能测试 → F3 纸鸢微内核 → F3.1 贪吃蛇 → ISA 指令集
+历史:  v0.1→v0.8b (BNN SoC 全链路) | C1 (28nm BNN 评估)
+欠账:  SM-ISA P3 (Verilog 落地) ← 下一步
+```
 ## ⚠️ 设计口径声明（必读）
 
 **本仓库所有 7nm/28nm 数字 = 理论外推，非 PDK 实测。**
@@ -93,13 +100,34 @@ class Backend:
 
 RTL 完成后实现 `FPGABackend` 即可，上层不变。
 
-## Roadmap
+## 🗺️ Roadmap（真实进度）
 
-- [x] 软件层: 量化/调度/模拟/运行时 (v0.1)
-- [ ] RTL: Verilog MAC 阵列 (8×8, int8)
-- [ ] RTL: 控制器状态机 (执行指令流)
-- [ ] FPGA 板验证 (Tang Nano 9K)
-- [ ] FPGABackend 驱动对接
+### 已完成 ✅
+
+| 里程碑 | 内容 | 验证 |
+|--------|------|------|
+| v0.1→v0.8b | BNN SoC 全链路 (DMA/CPU/10通道分类器) | MNIST 数字7 端到端识别 |
+| C1 | 28nm BNN 极限评估 (512×512) | 面积/能效模型 + 双口径 |
+| F1 | BF16 MAC 阵列 (8×8) | 8×8 全通道正确 + FreePDK45 综合 |
+| F2 | SoC 端到端性能测试 | Verilator 7958 周期实测 (双口径) |
+| F3 | 纸鸢微内核 (零攻击面) | 20万周期无 trap, 3任务调度 |
+| F3.1 | 贪吃蛇 on SoC | 16×16 矩阵 + WASD 全功能 |
+| ISA v0.1/v0.2 | SM-ISA 全新指令集 | 模拟器验证 (8×8 矩阵乘, 116×压缩) |
+| OpenEDA | 完整 ASIC 流程 | **GDS 产出**: bf16_mul 504um² + 8×8 阵列 0.94mm² |
+
+### 进行中 / 下一步 🔄
+
+- [ ] **SM-ISA P3: ISA 的 Verilog 落地** ⚠️ 最大欠账
+      → 解码器 + tile 执行单元 + 流引擎
+      → **golden model 交叉验证** (Python 模拟器 vs RTL 周期对比)
+- [ ] F4: 微内核 + 真实 BF16 阵列完整闭环 (任务提交→阵列算→结果返回)
+- [ ] 8×8 阵列 GDS 版图渲染 + 布局分析报告
+- [ ] (可选) SkyWater 130nm 真实流片验证 (开源可流片)
+
+### 定位声明
+
+- 全开源 + 不流片 → 物理验证上限 = FreePDK45 + OpenROAD
+- 7nm/28nm 数字 = 理论外推 (见 [docs/design-scope-statement.md](docs/design-scope-statement.md))
 
 ## 许可证
 
