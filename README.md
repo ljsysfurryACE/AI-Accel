@@ -1,5 +1,4 @@
 # AI-Accel
-
 **从底层自研 CNN 硬件加速器的软件栈**（RTL 前端的可验证实现）。
 
 先写软件层，与硬件解耦、可独立验证。将来 RTL（MAC 阵列）实现后，只需替换 Backend 为 FPGA 驱动，上层代码不变。
@@ -9,14 +8,12 @@
 欠账: SM-ISA P3 (Verilog 落地) - 下一步
 
 ## 设计口径声明
-
 **本仓库所有 7nm/28nm 数字 = 理论外推，非 PDK 实测。**
 全开源 + 不流片路线 -> 综合用 FreePDK45 (45nm 开源标准单元库, Yosys+abc 映射真实单元, 非 FPGA LUT)，
 物理验证用 OpenROAD 完整流程 (已产出真实 GDS)。
 详见 [docs/design-scope-statement.md](docs/design-scope-statement.md) — 含已知欠账诚实清单。
 
 ## 架构
-
 ```
 ┌─────────────────────────────────────────────┐
 │  Runtime (推理运行时)                        │
@@ -35,7 +32,6 @@
 ```
 
 ## 模块
-
 | 模块 | 功能 |
 |------|------|
 | `quantize.py` | INT8 对称量化 (float32->int8+scale), per-channel 权重量化 |
@@ -47,7 +43,6 @@
 | `test_runtime.py` | 运行时层验证 (封装一致性) |
 
 ## 快速开始
-
 ```bash
 # 端到端验证 (MNIST 小 CNN)
 python3 test_mnist.py
@@ -78,16 +73,14 @@ out = rt.infer(x)   # 推理!
 ```
 
 ## 验证结果
-
 | 指标 | 值 |
 |------|-----|
-| INT8 量化 vs 浮点 | argmax 一致 **100%**, 相关 **0.9999** |
-| Runtime vs Simulator | 差异 **0.000000** (封装无副作用) |
+| INT8 量化 vs 浮点 | argmax 一致 100%, 相关 **0.9999** |
+| Runtime vs Simulator | 差异 0.000000 (封装无副作用) |
 | 指令流 | 11 条 (LOAD_Wx3 + CONVx2 + RELUx2 + POOLx2 + FLATTEN + FC) |
 | 估算性能 | 64 MAC/cycle, 9064 操作 -> 142 cycle |
 
 ## Backend 接口（将来 FPGA 实现）
-
 ```python
 class Backend:
     def load_weights(self, name, q, scales): ...  # 写权重到加速器内存
@@ -98,9 +91,7 @@ class Backend:
 RTL 完成后实现 `FPGABackend` 即可，上层不变。
 
 ## Roadmap
-
-### 已完成 
-
+### 已完成
 | 里程碑 | 内容 | 验证 |
 |--------|------|------|
 | v0.1->v0.8b | BNN SoC 全链路 (DMA/CPU/10通道分类器) | MNIST 数字7 端到端识别 |
@@ -110,28 +101,24 @@ RTL 完成后实现 `FPGABackend` 即可，上层不变。
 | F3 | 纸鸢微内核 (零攻击面) | 20万周期无 trap, 3任务调度 |
 | F3.1 | 贪吃蛇 on SoC | 16x16 矩阵 + WASD 全功能 |
 | ISA v0.1/v0.2 | SM-ISA 全新指令集 | 模拟器验证 (8x8 矩阵乘, 116x压缩) |
-| OpenEDA | 完整 ASIC 流程 | **GDS 产出**: bf16_mul 504um² + 8x8 阵列 0.94mm² |
+| OpenEDA | 完整 ASIC 流程 | GDS 产出: bf16_mul 504um² + 8x8 阵列 0.94mm² |
 
-### 进行中 / 下一步 
-
-- [ ] **SM-ISA P3: ISA 的 Verilog 落地**  最大欠账
+### 进行中 / 下一步
+- [ ] SM-ISA P3: ISA 的 Verilog 落地  最大欠账
       -> 解码器 + tile 执行单元 + 流引擎
-      -> **golden model 交叉验证** (Python 模拟器 vs RTL 周期对比)
+      -> golden model 交叉验证 (Python 模拟器 vs RTL 周期对比)
 - [ ] F4: 微内核 + 真实 BF16 阵列完整闭环 (任务提交->阵列算->结果返回)
 - [ ] 8x8 阵列 GDS 版图渲染 + 布局分析报告
 - [ ] (可选) SkyWater 130nm 真实流片验证 (开源可流片)
 
 ### 定位声明
-
 - 全开源 + 不流片 -> 物理验证上限 = FreePDK45 + OpenROAD
 - 7nm/28nm 数字 = 理论外推 (见 [docs/design-scope-statement.md](docs/design-scope-statement.md))
 
 ## 许可证
-
 GPL-3.0 © Cloud LTE Studio
 
 ## v0.2 — RTL 层 (Verilog 硬件核心)
-
 新增 `rtl/` 目录:
 
 | 文件 | 说明 |
@@ -142,19 +129,16 @@ GPL-3.0 © Cloud LTE Studio
 | `rtl/tb_controller.v` | 控制器仿真 (指令流执行 PASS) |
 
 ### 仿真验证
-
 ```bash
 # MAC 阵列
 iverilog -g2012 -o tb_mac mac8x8.v tb_mac8x8.v && vvp tb_mac
 # PASS: 8 路 MAC 全部与软件层一致
-
 # 控制器
 iverilog -g2012 -o tb_ctrl controller.v && vvp tb_ctrl
 # 控制器状态机执行完整指令流
 ```
 
 ### 硬件指令集
-
 | opcode | 指令 | cycle |
 |--------|------|-------|
 | 0x01 | LOAD_W | 8 |
@@ -165,18 +149,15 @@ iverilog -g2012 -o tb_ctrl controller.v && vvp tb_ctrl
 | 0x06 | STORE | 1 |
 
 ### 状态机
-
 ```
 IDLE -> FETCH -> DECODE -> EXEC -> STORE -> (loop) -> DONE
 ```
 
 ## v0.3 — BNN 位级加速 (XNOR 架构)
-
 **核心思想**: 晶体管就是 0/1 — 把数据拆成位, 用位运算 (XNOR) 替代浮点乘法。
 FPGA 的 LUT (8640 个) 全并行, 绕开 DSP 乘法器限制。
 
 ### 为什么 BNN 快 ~400x
-
 | | INT8 MAC | BNN XNOR |
 |--|---------|----------|
 | 核心运算 | 乘法 (DSP, ~20 个) | **位运算 (LUT, 8640 个)** |
@@ -185,7 +166,6 @@ FPGA 的 LUT (8640 个) 全并行, 绕开 DSP 乘法器限制。
 | 加速 | 基准 | **~400x** |
 
 ### 新增文件
-
 | 文件 | 说明 |
 |------|------|
 | `bquantize.py` | BNN 二值化 (权重/激活 -> ±1) + XNOR/popcount |
@@ -193,19 +173,16 @@ FPGA 的 LUT (8640 个) 全并行, 绕开 DSP 乘法器限制。
 | `rtl/xnor_array.v` | XNOR 阵列硬件 (xnor_unit + popcount8 + 8x8 阵列) |
 
 ### BNN 验证结果
-
 - 精度: INT8 vs 浮点 100% / BNN vs 浮点 75% (随机权重, 真实数据 BNN 可达 95%+)
 - 硬件效率: BNN 比 INT8 **快 393x** (同 FPGA)
 - 仿真: XNOR 阵列 3 轮测试全 PASS (与软件层一致)
 
 ### 流片展望
-
 - TinyTapeout 拼车流片 ~100 美元 (700 元) — 个人也能拿到自己的芯片
 - BNN 加速器: 纯数字逻辑 + 小面积 + 全自研 = 流片友好
 - 下一步: 整合端到端 -> 适配 TinyTapeout
 
 ## v0.4 — XNOR 阵列优化 (参数化 + 流水线)
-
 针对 v0.3 四大瓶颈优化:
 
 | 优化 | v0.3 | v0.4 |
@@ -216,7 +193,6 @@ FPGA 的 LUT (8640 个) 全并行, 绕开 DSP 乘法器限制。
 | 权重 | 逐位 | **打包加载** |
 
 ### 算力提升
-
 | 阵列 | XNOR/cycle | @250MHz | 资源 |
 |------|-----------|---------|------|
 | 8x8 (v0.3) | 64 | 16 GOPS | 0.7% |
@@ -224,25 +200,20 @@ FPGA 的 LUT (8640 个) 全并行, 绕开 DSP 乘法器限制。
 | **64x64 (v0.4)** | **4096** | **1.02 TOPS** | ~50% |
 
 ### 新增文件
-
 - `rtl/xnor_array_v2.v` — 参数化 XNOR 阵列 (NxM, 3 级流水线, LUTROM popcount)
 - `rtl/xnor_array_v2_64.v` — 64x64 极限版测试
 
 ### 仿真验证
-
 - 16x16: 3 轮测试 PASS
 - 64x64: 3 轮测试 PASS (64 路全对)
 
 ### 流片准备
-
 - 64x64 阵列 ~1 TOPS @ 130nm/250MHz — TinyTapeout 友好 (参数化可调面积)
 
 ## v0.5 — 数据复用 (Weight-Stationary + 行缓冲)
-
 **解决存储带宽墙**: 64x64 阵列裸跑需 130 GB/s, 实际只有 ~15 GB/s -> 算力被带宽卡死。
 
 ### 三层数据复用
-
 | 优化 | 模块 | 带宽效果 |
 |------|------|---------|
 | **权重驻留 (WS)** | `rtl/ws_array.v` | 权重加载一次驻留, 激活流式 -> 130->4 GB/s |
@@ -250,19 +221,16 @@ FPGA 的 LUT (8640 个) 全并行, 绕开 DSP 乘法器限制。
 | 组合 | | **130->1.5 GB/s (降 90x)**  |
 
 ### WS 阵列特性
-
 - 权重加载一次 -> 永久驻留寄存器阵列 (不再反复读)
 - 激活流式输入 -> 每 cycle 只喂 64 bit 新数据
 - 仿真: 1 次权重加载 + 3 轮激活流式, 全 PASS
 
 ### 行缓冲特性
-
 - 28x28 图像流式输入 -> 3x3 窗口连续输出
 - 像素只读一次, 窗口滑动复用
 - 仿真: 784 像素 -> 392 窗口, 工作正常
 
 ### 带宽对比
-
 ```
 裸 64x64:    130 GB/s 💀 (只能跑 1/10)
 WS 数据复用: ~2-4 GB/s 
@@ -272,11 +240,9 @@ WS 数据复用: ~2-4 GB/s
 ```
 
 ## v0.6 — 流片准备包 (DFT + 低功耗 + 时序约束)
-
 针对 ASIC 流片的三大必备项 (TinyTapeout 130nm):
 
 ### 新增文件
-
 | 文件 | 说明 |
 |------|------|
 | `rtl/dft.v` | DFT: 扫描链 (scan_dff) + BIST 控制器 + bnna_top 集成 |
@@ -284,7 +250,6 @@ WS 数据复用: ~2-4 GB/s
 | `rtl/timing.sdc` | 250MHz 时序约束 (主时钟/IO/伪路径) |
 
 ### 为什么必须 (流片现实)
-
 1. **DFT**: 芯片造出来全是物理瑕疵 (缺陷率 30-50%) — 无扫描链 -> 坏一个单元整片废
    - 扫描链: FF 串链, 扫入已知模式 -> 扫出比对 -> 芯片好坏立判
    - BIST: 上电自动跑固定测试 -> PASS/FAIL 引脚 (不用外部测试设备)
@@ -292,13 +257,11 @@ WS 数据复用: ~2-4 GB/s
 3. **SDC**: 无约束 -> 综合器乱摆 -> 时序不收敛 -> 跑不了高频
 
 ### 仿真验证
-
 - 扫描链: 64 bit 移位正常 
 - 正常功能: 不受 DFT 影响 
 - 时钟门控: 空闲停钟 10/10 cycle, 激活期正常 
 
 ### 流片就绪包
-
 ```
 AI-Accel 完整 RTL:
 ├─ xnor_array_v2.v   核心阵列 (参数化 16x16/64x64/128x128)
@@ -311,12 +274,10 @@ AI-Accel 完整 RTL:
 ```
 
 ## v0.7 — DMA 引擎 (SoC 数据搬运)
-
 **问题**: CPU 逐拍搬运数据 -> 总线带宽瓶颈 -> CPU 被拖死。
 **解决**: DMA 直接内存访问, BRAM ↔ BNN 加速器批量搬运, CPU 只发命令然后休眠。
 
 ### DMA 工作流
-
 ```
 1. CPU 写控制寄存器 (src/dst/len) -> START
 2. CPU 休眠 (WFI) 💤
@@ -328,59 +289,49 @@ AI-Accel 完整 RTL:
 **总线只碰 2 次** (启动命令 + 完成中断) -> 功耗才能真降到 150mW 以下
 
 ### rtl/dma.v
-
 - CPU 寄存器接口: addr0=控制, addr1=src, addr2=dst, addr3=len, addr4=状态
 - Burst 传输: 8x64bit 批量搬运
 - 完成中断: irq 唤醒 CPU
 - 状态机: IDLE->READ->FEED->WAIT->WRITE->DONE
 
 ### 仿真验证
-
 - 32 个数据: mem[0..31] -> 加速器(+1) -> mem[32..63] 全部正确 
 - 中断唤醒 CPU 
 
 ### 踩坑记录
-
 - `32'b10` = bit0=0 (START 没触发) -> 应 `32'b11`
 - 32 位 reg 用 `[63:0]` 索引 -> 高位 X -> 应 `{32'b0, acc_result}` 拼接
 
 ## v0.8a — SoC 骨架 (RISC-V CPU + BRAM)
-
 **里程碑**: 自研 SoC 的 CPU 核心点亮! PicoRV32 软核在 BRAM 上跑固件。
 
 ### rtl/soc_a.v
-
 - **PicoRV32** (RISC-V 软核): simple memory 接口, ENABLE_MUL/DIV/IRQ
 - **BRAM 16KB**: 0x0000-0x0FFF (程序+数据)
 - **外设**: 0x1000 LED 状态寄存器 (验证 CPU 写外设)
 - **固件**: 手写 RISC-V 指令 (lui/addi/sw/ebreak)
 
 ### 内存映射
-
 ```
 0x0000-0x0FFF: BRAM (程序+数据)
 0x1000-0x100F: LED 状态寄存器
 ```
 
 ### 仿真验证
-
 ```
 固件: lui x5,0x12345 -> addi -> sw 到 BRAM -> sw 到 LED -> ebreak
 结果: LED 状态寄存器 = 0x12345678  CPU trap 
 ```
 
 ### 踩坑记录 (RISC-V 手写编码)
-
 - `lui x6, 0x1000` 生成 0x1000000 不是 0x1000 (imm 左移 12 位, 应 `lui x6, 1`)
 - sw 是 S-type: `sw x5, 0x100(x0)` = 0x10502023 (rs2 低 5 位, rs1 高 5 位)
 - lui 高 16 位必须写全: 0x123452b7 不是 0x000052b7
 
 ## v0.8b - 端到端真实推理（SoC 完整链路）
-
 **里程碑**: 一颗 RISC-V CPU + 自研 BNN 加速器的完整 SoC, 成功识别真实 MNIST 数字!
 
 ### 完整链路
-
 ```
 RISC-V CPU 固件 (rv_asm.py 汇编生成)
   -> 复位 BNN -> 加载 130 字权重 -> 加载 10 偏置
@@ -390,7 +341,6 @@ RISC-V CPU 固件 (rv_asm.py 汇编生成)
 ```
 
 ### 新增文件
-
 - `rtl/bnn_slave.v`: BNN 分类器从设备 (10 通道 XNOR+popcount+累加, memory-mapped)
 - `rtl/soc_b.v`: 完整 SoC (PicoRV32 + BRAM + DMA + BNN + 外设)
 - `rtl/mnist_weights.hex / input.hex / bias.hex`: 真实 MNIST 数据 (75.69% 准确率)
@@ -399,12 +349,10 @@ RISC-V CPU 固件 (rv_asm.py 汇编生成)
 - `tools/gen_firmware.py`: C 风格固件 -> 机器码
 
 ### DMA 升级 (v0.8b)
-
 - 流式喂数据模式: 连续喂 len 个字再等 acc_done (适配 BNN 累加器)
 - 地址步进修复: 64-bit 字 = 8 字节 (count<<3)
 
 ### 验证结果
-
 ```
  CPU ebreak (程序结束)
  LED (分类结果) = 7
@@ -413,18 +361,15 @@ RISC-V CPU 固件 (rv_asm.py 汇编生成)
 ```
 
 ### 踩坑 (RISC-V 汇编器)
-
 - JAL imm 是分散位段, 不是 diff<<12
 - 负跳转: Python 算术右移 -> 需 & 0xFFFFFFFF 转补码
 - BNN 必须 START 才接收 DMA 数据
 - DMA 64-bit 地址步进 8 字节
 
 ## C1 - 28nm 极限版 BNN 核（4 级流水 + CSA 累加器）
-
 **C 系列定位**: 不流片, 榨干 28nm 每一寸极限。以**系统能效**为验收标准(非峰值)。
 
 ### rtl/bnn_core_c.v
-
 512x512 参数化 BNN 核 @2GHz 设计 (4 级流水):
 
 ```
@@ -440,7 +385,6 @@ RISC-V CPU 固件 (rv_asm.py 汇编生成)
 - **级间 valid 传递**: 流水线内部节拍, 连续喂拍无气泡
 
 ### 综合评估 (yosys 实测 + 28nm 流片级折算)
-
 ```
 16x16 核: 8494 cells (每 XNOR 位 ~26.8 门等效含 popcount+累加+流水)
 512x512: 18.0M GE 等效 / 12.9 mm² @28nm (布图后, 70% 利用率)
@@ -455,7 +399,6 @@ RISC-V CPU 固件 (rv_asm.py 汇编生成)
 - 512x512 单大核不划算 -> 256x256x4 核同算力更优
 
 ### docs/system-efficiency-model.md — 系统能效模型
-
 **峰值 ≠ 系统!** 验收只认系统口径:
 
 ```
@@ -467,7 +410,6 @@ RISC-V CPU 固件 (rv_asm.py 汇编生成)
 ```
 
 ### 仿真验证
-
 ```
  权重分布式锁存加载 (同步写)
  4 级流水 + 级间 valid, 连续 8 拍无气泡
@@ -475,11 +417,9 @@ RISC-V CPU 固件 (rv_asm.py 汇编生成)
 ```
 
 ## F1 - BF16 浮点 MAC 阵列
-
 **新架构**: 从 BNN (XNOR 位运算) 切换到 **BF16 浮点运算**——能跑任意 FP16/BF16 模型!
 
 ### 为什么 BF16
-
 ```
 BF16: 1符号 + 8指数 + 7尾数 = 16位
  指数同 FP32 (8位) -> 动态范围一样
@@ -489,7 +429,6 @@ BF16: 1符号 + 8指数 + 7尾数 = 16位
 ```
 
 ### rtl/ 文件
-
 - `fp32_add.v`: 标准 FP32 加法器 (指数对齐+归一化)
 - `bf16_mac.v`: BF16 MAC 阵列
   - bf16_mul: BF16 乘法器 (7x7 尾数)
@@ -497,7 +436,6 @@ BF16: 1符号 + 8指数 + 7尾数 = 16位
   - NxM 参数化阵列 + FP32 累加
 
 ### 验证结果
-
 ```
 FP32 加法器: 1.0+2.0=3.0, 1.5+2.5=4.0, 100+1=101 
 BF16 乘法器: 1.0x1.0=1.0, -1.0x2.0=-2.0 
@@ -505,24 +443,20 @@ MAC 阵列: 8x8 全 1.0 权重 x 1..128 = 255.0
 ```
 
 ### 踩坑 (浮点设计)
-
 - Verilog `+` 是整数加法! FP32 必须写浮点加法器 (指数对齐)
 - 非阻塞赋值时序: posedge 采样旧值 -> 串行累加错位
 - 最终: 并行乘法器 + 加法树 (比串行累加可靠)
 
 ## F2 - BF16 SoC 端到端性能测试
-
 **虚拟架构性能测试**: 不流片, Verilator 编译 RTL -> C++ 仿真器 -> 实测端到端推理性能。
 
 ### 测试场景
-
 ```
 MNIST 全连接 (784 输入 x 10 类)
 映射: bf16_mac_array #(.N(10), .M(8)) — 每拍 8 输入, 98 拍累加
 ```
 
 ### 实测结果 (Verilator 5.020, 诚实双口径)
-
 ```
 权重加载:  7,840 周期 (10x784 BF16)
 推理计算:  98 周期 (98 拍流水)
@@ -536,12 +470,10 @@ MNIST 全连接 (784 输入 x 10 类)
 ```
 
 ### 工具
-
 - `tools/bf16_e2e_sim.cpp`: C++ 端到端测试台
 - Verilator 编译: `verilator --cc --exe --build -Wno-lint -Wno-fatal --top-module bf16_mac_array rtl/bf16_mac.v rtl/fp32_add.v tools/bf16_e2e_sim.cpp`
 
 ### 性能解读
-
 ```
 8x8 阵列 @1GHz: 132 GFLOPs 实测
 -> 每拍 64 MAC (8x8), 98 拍算完 7840 MAC
@@ -549,17 +481,14 @@ MNIST 全连接 (784 输入 x 10 类)
 ```
 
 ### 踩坑 (Verilator)
-
 - 多维数组 (unpacked) Verilator 支持差 -> 加法树写死 8 路
 - VlWide 宽信号需数组访问 (a_data[word] / 位操作)
 - 编译需 -Wno-lint + 正确 include (verilated.h)
 
 ## F3 - 纸鸢微内核（PaperKite uKernel）
-
 **AI-Accel SoC 的最小运行环境** — 轮询式协作内核, 无网络/无动态内存/无抢占/无中断依赖 = 几乎没有安全风险.
 
 ### 安全设计 (攻击面为零)
-
 ```
  无网络栈        -> 无远程攻击面
  无动态内存      -> 无堆溢出利用链 (全静态分配)
@@ -569,7 +498,6 @@ MNIST 全连接 (784 输入 x 10 类)
 ```
 
 ### 实测 (iverilog + PicoRV32 真实 SoC 仿真)
-
 ```
 PaperKite uKernel v0.2
 tasks: led / counter / infer
@@ -580,14 +508,12 @@ tasks: led / counter / infer
 ```
 
 ### 文件
-
 - `os/kernel.c` — 内核 (任务表/轮询调度/最小libc/BF16驱动/DMA驱动)
 - `os/start.s` — 启动 (栈+清BSS含.sbss)
 - `os/link.ld` — 链接脚本 (RAM 0x0000-0x1FFF)
 - `rtl/soc_f.v` — F 系列 SoC (PicoRV32+BRAM+UART+定时器+BF16接口+DMA+LED)
 
 ### 编译
-
 ```bash
 riscv64-unknown-elf-gcc -march=rv32im_zicsr_zifencei -mabi=ilp32 -Os \
   -ffreestanding -nostdlib -c start.s -o start.o
@@ -598,7 +524,6 @@ riscv64-unknown-elf-ld -m elf32lriscv -T link.ld -nostdlib start.o kernel.o -o k
 ```
 
 ### 踩坑 (RISC-V 裸机)
-
 - PicoRV32 COMPRESSED_ISA=0 -> 必须编译 rv32im (无压缩指令)
 - PicoRV32 CSR 支持有限 -> 启动代码不要用 csrci (复位默认关中断)
 - GCC 的 .sbss 小数据段不在 .bss* 通配符内 -> link.ld 必须加 *(.sbss*)
@@ -606,11 +531,9 @@ riscv64-unknown-elf-ld -m elf32lriscv -T link.ld -nostdlib start.o kernel.o -o k
 - 链接器默认 elf64 emulation -> ld 必须 -m elf32lriscv
 
 ## F3.1 - 贪吃蛇
-
 **纸鸢微内核 + soc_f SoC 上跑贪吃蛇** — "自研 CPU + 自研 OS + 自研游戏"全链路!
 
 ### 实测 (iverilog 仿真)
-
 ```
 frame: 食物(4,12)● + 蛇向右移动
        (7,7)(7,8) -> (7,8) -> (7,12) -> (7,13) -> 撞墙
@@ -618,29 +541,24 @@ GAME OVER 正常触发, 蛇重置
 ```
 
 ### 游戏功能
-
 - 16x16 LED 矩阵显示 (256 bit, 0x2400-0x241F)
 - WASD 方向键 (0x1010 键盘输入)
 - 蛇移动/增长/吃食物 (硬件定时器伪随机)
 - 撞墙/撞自己 -> GAME OVER -> 重置
 
 ### 新增硬件 (soc_f.v)
-
 - 0x1010 键盘输入寄存器
 - 0x2400-0x241F 16x16 LED 矩阵 (4 字节使能写)
 
 ### 踩坑 (硬件外设设计)
-
 - 外设区 (0x1000-0x101F) 必须排除出 BRAM 译码, 否则读回 X 触发误分支
 - GCC 把字节操作优化成 32 位 lw/sw -> 外设必须支持完整 wstrb 字节使能
 - wstrb[1-3] 对应字节偏移 +1/+2/+3, 不能都写 base 字节
 
 ## ISA - SM-ISA v0.1 指令集
-
 **全新 ISA 最小验证** — 矩阵计算是一等公民的流矩阵指令集 (16 位定长).
 
 ### 核心洞察
-
 ```
 传统 ISA: 64 次乘加 = ~130 条指令 (每数据 1 条 load/store)
 SM-ISA:   64 次乘加 = 9 条指令 (tile 级操作)
@@ -650,13 +568,11 @@ SM-ISA:   64 次乘加 = 9 条指令 (tile 级操作)
 ```
 
 ### 设计
-
 - 16 位定长指令, 12 条指令
 - 8 标量寄存器 + 4 个 4x4 tile 寄存器 (BF16)
 - 矩阵/搬运/控制三分域: 计算粒度提升到 tile
 
 ### 验证结果 (模拟器自检)
-
 ```
 5 次随机 4x4 矩阵乘: 全部通过 
 最大相对误差 0.37% (BF16 7 位尾数精度极限)
@@ -664,22 +580,18 @@ SM-ISA:   64 次乘加 = 9 条指令 (tile 级操作)
 ```
 
 ### 文件
-
 - `isa/sm-isa-spec.md` — ISA 规范
 - `isa/sm_sim.py` — 汇编器 + 模拟器 + 自检
 - `isa/matmul.hex` — 矩阵乘程序
 
 ### 下一步
-
 - P2: 流指令 (STREAM) + 更大 tile (8x8 对齐 F 系列阵列)
 - P3: Verilog 硬件实现 (解码器 + tile 执行单元)
 
 ## ISA-v0.2 - 流指令 + 8x8 tile
-
 **32 位定长 ISA** — 流指令 (STREAM) 让数据"流动"穿过计算单元, 地址指针自动递增.
 
 ### 验证结果 (模拟器自检)
-
 ```
 8x8 矩阵乘 x3: 全部通过  (512 MAC/指令, 误差 <0.31%)
 流式连续乘:     SLOADx3 + MTILE + SSTORE
@@ -688,7 +600,6 @@ SM-ISA:   64 次乘加 = 9 条指令 (tile 级操作)
 ```
 
 ### 核心指令
-
 ```
 SLOAD Td, [Rs]    ; 流式加载 8x8 tile (128B), Rs += 128
 SSTORE [Rs], Ts   ; 流式存储, Rs += 128
@@ -696,6 +607,5 @@ MTILE Td, Ts1, Ts2 ; 8x8x8 = 512 MAC/指令
 ```
 
 ### 文件
-
 - `isa/sm-isa-v02-spec.md` — v0.2 规范
 - `isa/sm_sim_v2.py` — v0.2 模拟器 + 自检
