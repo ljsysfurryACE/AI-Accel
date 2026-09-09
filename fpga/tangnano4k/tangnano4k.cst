@@ -1,0 +1,17 @@
+// Tang Nano 4K 引脚约束 (GW1NSR-4C QN48)
+IO_LOC "clk" 52;
+IO_PORT "clk" IO_TYPE=LVCMOS33;
+
+// RGB LED (低有效) — 官方: LED_R 17, LED_G 16, LED_B 15 (RGB3)
+// 板上有 4 个 RGB (RGB1-4), 常用 RGB1
+IO_LOC "led[0]" 17;   // R
+IO_LOC "led[1]" 16;   // G
+IO_LOC "led[2]" 15;   // B
+IO_LOC "led[3]" 14;   // RGB2 R (如果 4 个 LED 全用)
+
+// 按键: S1=复位(rst_n 低有效), S2=用户键
+IO_LOC "rst_n" 4;
+IO_LOC "key2" 3;
+
+// UART TX (用引脚 21 或用户引脚)
+IO_LOC "uart_tx" 21;
